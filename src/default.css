@@ -1,0 +1,41 @@
+/* CSS file */
+@namespace s "library://ns.adobe.com/flex/spark";
+
+.message {
+	fontWeight: bold;
+	color: #6b93aa;
+	fontSize: 16;
+}
+
+@media (application-dpi:160){
+	.message {
+		fontSize:16;
+	}
+}
+
+@media (application-dpi:240){
+	.message {
+		fontSize:18;
+	}
+}
+
+@media (application-dpi:320){
+	.message {
+		fontSize:24;
+	}
+}
+
+
+
+@media (os-platform:"IOS"){
+	s|ActionBar{
+		defaultButtonAppearance:beveled;
+		titleAlign:center;
+		accentColor:"0x0000FF";
+	}
+	
+	s|ActionBar.beveled s|Group#navigationGroup s|Button.actionBarBtn{
+		skinClass:ClassReference("spark.skins.mobile.BeveledActionButtonSkin");
+	}
+}
+

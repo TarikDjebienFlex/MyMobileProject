@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:ViewNavigatorApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+									 xmlns:s="library://ns.adobe.com/flex/spark"
+									 xmlns:components="spark.components.*"
+									 xmlns:bdd="bdd.*"
+									 firstView="views.WesternsList"
+									 persistNavigatorState="true"
+									 
+									 initialize="init()"
+									 navigatorStateLoading="navigatorStateLoadingHandler(event)"
+									 navigatorStateSaving="navigatorStateSavingHandler(event)"
+									 
+									 backgroundColor="0x6b93aa"
+									 splashScreenImage="@Embed('assets/splash.png')"
+									 splashScreenScaleMode="stretch"
+									 splashScreenMinimumDisplayTime="3000"
+									 >
+	
+	<fx:Script>
+		<![CDATA[
+			import utils.Mobile;
+			import bdd.DBHelper;
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import spark.transitions.SlideViewTransitionMode;
+			import spark.transitions.ViewTransitionDirection;
+			import views.WesternsDetails;
+			import vo.WesternsCollection;
+			import westernsEvents.SingleParamEvent;
+			import westernsEvents.WesternsCollectionChange;
+			
+			public static const WESTERNS_COLLECTION_CHANGE_ITEM:String = "westernsCollectionChangeItem";
+			public static const WESTERNS_SEARCH_FILMS:String = "westernsSearchFilms";
+			private static const WESTERNS_DB_NAME:String = "Westerns.db";
+			
+			private var _westernsCollection:WesternsCollection;
+			
+			private var _slideViewTransitionPop:SlideViewTransition = new SlideViewTransition();
+			
+			private function init():void
+			{
+				// BDD locale recréée automatiquement
+				DBHelper.openDatabase(File.documentsDirectory.resolvePath(WESTERNS_DB_NAME));
+				
+				// evenements spécifiques émis par les vues au travers du navigator
+				this.navigator.addEventListener(WESTERNS_SEARCH_FILMS, searchFilmsHandler);
+				this.navigator.addEventListener(WESTERNS_COLLECTION_CHANGE_ITEM, selectFilmHandler);
+				
+				setViewTransition();
+				
+				Mobile.traceResolution();
+			}
+			
+			private function searchFilmsHandler(event:SingleParamEvent):void
+			{
+				// En position 0 la chaine à rechercher, en 1 le critère de tri
+				if (event.text){
+					var args:Array = event.text.split(";");
+					searchFilms(args[0], args[1]);
+				}
+				
+			}
+			
+			private function searchFilms(movieTitle:String = "", sort:String="year"):void
+			{
+				var ac:ArrayCollection = westernsDAO.findByTitle(movieTitle, sort);
+				_westernsCollection = WesternsCollection.build(ac,0);
+				
+				var e:WesternsCollectionChange = new WesternsCollectionChange(
+					WesternsCollectionChange.WESTERNS_COLLECTION_CHANGE_ARRAY, 
+					_westernsCollection
+				);
+				this.dispatchEvent(e);
+			}
+			
+			private function selectFilmHandler(event:SingleParamEvent):void
+			{
+				if (event.text) 
+				{
+					_westernsCollection.currentItem = Number(event.text);
+					this.navigator.pushView(WesternsDetails, _westernsCollection);
+				}
+			}
+			
+			private function setViewTransition():void
+			{
+				this._slideViewTransitionPop.direction = ViewTransitionDirection.DOWN;
+				this._slideViewTransitionPop.mode = SlideViewTransitionMode.UNCOVER;
+				this._slideViewTransitionPop.duration = 500;
+				this._slideViewTransitionPop.easer = _bounceEasing;
+				
+				this.navigator.defaultPushTransition = this._slideViewTransitionPush;
+				this.navigator.defaultPopTransition = this._slideViewTransitionPop;
+			}
+			
+			private function navigatorStateLoadingHandler(event:FlexEvent):void
+			{
+				this._westernsCollection = this.persistenceManager.getProperty("wc") as WesternsCollection;
+			}
+			
+			private function navigatorStateSavingHandler(event:FlexEvent):void
+			{
+				this.persistenceManager.setProperty("wc", this._westernsCollection);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<bdd:WesternDAO id="westernsDAO" />
+		<s:Bounce id="_bounceEasing" />
+		<s:SlideViewTransition id="_slideViewTransitionPush"
+							   direction="{ViewTransitionDirection.UP}"
+							   mode="{SlideViewTransitionMode.COVER}"
+							   easer="{_bounceEasing}"
+							   duration="500"/>
+	</fx:Declarations>
+	
+	<fx:Style source="default.css"/>
+	
+	<components:navigationContent>
+		<s:Button icon="@Embed('assets/home.png')" click="navigator.popToFirstView()" />
+	</components:navigationContent>
+		
+	
+</components:ViewNavigatorApplication>

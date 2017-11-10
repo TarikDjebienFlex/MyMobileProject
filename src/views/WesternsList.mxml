@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" xmlns:components="spark.components.*" 
+				 title="Westerns"
+				 viewActivate="viewActivateHandler(event)"
+				 addedToStage="addedToStageHandler(event)">
+	
+	<components:titleContent>
+		<s:TextInput id="Key" 
+					 width="100%" 
+					 prompt="Titre du Western"/>
+	</components:titleContent>
+	
+	<components:navigationContent/>
+	
+	<components:actionContent>
+		<s:Button id="searchBtn" 
+				  height="90%" 
+				  icon="@Embed('assets/search.png')" click="searchBtn_clickHandler(event)"/>
+	</components:actionContent>
+
+	<components:viewMenuItems>
+		<s:ViewMenuItem label="Tri par Année" 
+						icon="@Embed('assets/83-calendar.png')"
+						click="menuSortItemClick(event)"/>
+		<s:ViewMenuItem label="Tri par Nom" 
+						icon="@Embed('assets/152-rolodex.png')"
+						click="menuSortItemClick(event)" />
+	</components:viewMenuItems>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.core.FlexGlobals;
+			import mx.rpc.events.ResultEvent;
+			import spark.events.IndexChangeEvent;
+			import spark.events.ViewNavigatorEvent;
+			import utils.Mobile;
+			import westernsEvents.SingleParamEvent;
+			import westernsEvents.WesternsCollectionChange;
+			
+			private var _app:Object = FlexGlobals.topLevelApplication;
+			
+			protected function filmsList_changeHandler(event:IndexChangeEvent):void
+			{
+				navigator.dispatchEvent(
+					new SingleParamEvent(
+						Westerns.WESTERNS_COLLECTION_CHANGE_ITEM,
+						event.newIndex.toString()
+					)
+				);
+			}
+			
+			protected function searchBtn_clickHandler(event:MouseEvent):void
+			{
+				this.searchFilms(Key.text);
+			}
+			
+			private function searchFilms(key:String = "", sort:String="year"):void
+			{
+				var e:SingleParamEvent = new SingleParamEvent(Westerns.WESTERNS_SEARCH_FILMS, key+";"+sort);
+				navigator.dispatchEvent(e);
+			}
+			
+			protected function viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				// gestion de l'orientation
+				this.setTileLayout(Mobile.getWidth());
+				
+				this._app.addEventListener(
+					WesternsCollectionChange.WESTERNS_COLLECTION_CHANGE_ARRAY, 
+					westernsCollectionChangeHandler
+				);
+				
+				if (data == null){
+					// instanciation de la vue et pas restauration
+					// on affiche tous les films
+					this.searchFilms("");
+				}
+				
+			}
+			
+			private function westernsCollectionChangeHandler(e:WesternsCollectionChange):void
+			{
+				this.data = e.westerns.arrayCollection;
+			}
+			
+			private function setTileLayout(screenWidth:Number):void
+			{
+				this.tileLayout.columnWidth = 
+					(screenWidth / this.tileLayout.requestedColumnCount) - this.tileLayout.horizontalGap;
+			}
+			
+			private function addedToStageHandler(event:Event):void
+			{
+				stage.addEventListener(StageOrientationEvent.ORIENTATION_CHANGE, orientationChangeHandler);				
+			}
+			
+			private function orientationChangeHandler(e:StageOrientationEvent):void
+			{
+				var newWidth:Number=Mobile.getWidth();
+				
+				Mobile.traceResolution();
+				Mobile.traceStageDimensions();
+				trace("orientationChangeHandler: "+e.afterOrientation+" "+newWidth);
+				
+				this.setTileLayout(newWidth);
+			}
+			
+			protected function menuSortItemClick(event:MouseEvent):void
+			{
+				switch(event.currentTarget.label) {
+					case "Tri par Nom" : 
+						searchFilms(this.Key.text,"fr");
+						break;
+					case "Tri par Année" :
+						searchFilms(this.Key.text);
+						break;
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<components:states>
+		<s:State name="portrait"/>
+		<s:State name="landscape"/>
+	</components:states>
+	
+	<s:List id="filmsList"
+			left="0" right="0" top="0" bottom="0" 
+			dataProvider="{data}"
+			contentBackgroundColor="0x6b93aa"
+			change="filmsList_changeHandler(event)"
+			>
+		<s:layout>
+			<s:TileLayout id="tileLayout"
+						  orientation="rows"
+						  horizontalGap="0" verticalGap="0"
+						  requestedColumnCount.landscape="2"
+						  requestedColumnCount.portrait="1" />
+		</s:layout>
+		<s:itemRenderer>
+			<fx:Component>
+				<components:IconItemRenderer 
+					label="{data.fr} "
+					messageFunction="getMessage"
+					iconField="imageURL"
+					iconPlaceholder="{assets.LoadingIcon}"
+					decorator="{assets.Chevron}"
+					alternatingItemColors="[0xdadada,0xb0b0b0]"
+					color="0x5e5e5e"
+					downColor="0x6b93aa"
+					messageStyleName="message">
+					<fx:Script>
+						<![CDATA[
+							import assets.Chevron;
+							import assets.LoadingIcon;
+							
+							import vo.WesternVO;
+							
+							private function getMessage(item:Object):String
+							{
+								var western:WesternVO = item as WesternVO;
+								var label:String = western.director+" ("+western.year+")";
+								return label;
+							}
+							
+						]]>
+					</fx:Script>
+				</components:IconItemRenderer>
+
+			</fx:Component>
+		</s:itemRenderer>
+	</s:List>
+</components:View>

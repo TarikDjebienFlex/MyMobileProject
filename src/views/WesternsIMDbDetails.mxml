@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:components="spark.components.*" 
+				 xmlns:components1="components.*"
+				 
+				 title="{data.fr}"
+				 enabled="false"
+				 destructionPolicy="never"
+				 
+				 viewActivate="viewActivateHandler(event)"
+				 creationComplete="creationCompleteHandler(event)">
+	
+	<fx:Declarations>
+		<s:HTTPService id="imdbService" 
+					   resultFormat="text"
+					   url="http://www.imdbapi.com/?t={data.fr}&amp;y={data.year}"
+					   result="imdbService_resultHandler(event)"
+					   fault="imdbService_faultHandler(event)"
+					   />
+		<s:CrossFadeViewTransition id="_fadeTransition" />
+		<s:FlipViewTransition id="_flipTransition"
+							  mode="cube"/>
+		
+		<s:Button id="detailBtn" 
+				  height="90%"
+				  label="Back" 
+				  click="navigator.popView(this._fadeTransition)" />
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import flash.net.navigateToURL;
+			
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.ViewNavigator;
+			import spark.events.ViewNavigatorEvent;
+			import spark.managers.PersistenceManager;
+			
+			import utils.Mobile;
+			
+			import vo.IMDbvo;
+			
+			[Bindable]
+			private var imdb:IMDbvo;
+			
+			[Bindable]
+			[Embed(source="assets/mail.png")]
+			private var mailIcon:Class;
+			
+			private var _pm:PersistenceManager = FlexGlobals.topLevelApplication.persistenceManager;
+			
+			protected function imdbService_resultHandler(event:ResultEvent):void
+			{
+				trace("Appel de l'API IMDb distante");
+				trace("http://www.imdbapi.com/?t="+data.fr+"&amp;y="+data.year);
+				trace(event.result.toString());
+				
+				var imdbResult:Object = JSON.decode(event.result.toString());
+				this.imdb = IMDbvo.buildFromObject(imdbResult);
+				
+
+				this.bi.visible = false;
+				this.bi.includeInLayout = false;
+				this.enabled = true;
+				if (imdb) {
+					this.webBtn.visible = (this.imdb.id != null);
+				}
+				this.detailBtn.enabled=true;
+				
+				
+			}
+			
+			protected function imdb_clickHandler(event:MouseEvent):void
+			{
+				navigator.pushView(WesternsIMDbWeb,imdb, null);
+			}
+			
+			protected function imdbService_faultHandler(event:FaultEvent):void
+			{
+				trace(event.fault.toString());				
+			}
+			
+			protected function mail_clickHandler(event:MouseEvent):void
+			{
+				var queryString:String = "?subject="+imdb.us+"&body="+imdb.toString();
+				navigateToURL(new URLRequest('mailto:'+mail.text+queryString));
+			}
+			
+			protected function mail_focusOutHandler(event:FocusEvent):void
+			{
+				// Enregistre le destinataire du mail dans l'espace de stockage local
+				this._pm.setProperty("mailTo", mail.text);
+			}
+			
+			private function restoreMailTo():void
+			{
+				var mailTo:String = new String(this._pm.getProperty("mailTo"));
+				if (mailTo && mailTo != "null") {
+					this.mail.text = mailTo;
+				} else {
+					this.mail.text = "tarik.djebien@gmail.com";
+				}
+			}
+			
+			private function viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				this.restoreMailTo();
+			}
+			
+			private function addIOSbtn(btn:Button):void
+			{
+				var app:Object = FlexGlobals.topLevelApplication;
+				var appNavigator:ViewNavigator = app.navigator;
+				var navArr:Array;
+				if(Mobile.iOS()){
+					navArr = appNavigator.activeView.navigationContent;
+					if (navArr) {
+						// Installation sur le navigation content de la vue
+						navArr.push(btn);
+						appNavigator.activeView.navigationContent = navArr;
+					} else {
+						// Installation sur le navigation content de l'appli
+						navArr = app.navigationContent as Array;
+						navArr.push(btn);
+						app.navigationContent = navArr;
+					}
+				}
+			}
+			
+			protected function creationCompleteHandler(event:FlexEvent):void
+			{
+				this.imdbService.send();
+				this.addIOSbtn(this.detailBtn);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<components:navigationContent/>
+	
+	<components:actionContent>
+		<s:Button id="webBtn" label="Web" visible="false" width="100%" height="90%" 
+				  click="imdb_clickHandler(event)"/>
+		<s:BusyIndicator id="bi" 
+						 visible="true" 
+						 top="0" horizontalCenter="0" symbolColor="white" />
+	</components:actionContent>
+	
+	<components:layout>
+		<s:VerticalLayout gap="20" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5" />
+	</components:layout>
+	
+	<components:viewMenuItems>
+		<components1:HomeMenuItem appNavigator="{this.navigator}"/>
+	</components:viewMenuItems>
+	
+	<s:TextArea id="plot_ta" 
+				width="100%" 
+				editable="false" 
+				text="{imdb.plot}" />
+	<s:Label width="100%" 
+			 text="{imdb.us}" 
+			 textAlign="center" fontWeight="bold" />
+	
+	<s:Scroller width="100%" height="80%">
+		<s:Group horizontalCenter="0">
+			<s:Form top="0" horizontalCenter="0" width="100%">
+				<s:layout>
+					<s:FormLayout gap="5" />
+				</s:layout>
+				
+				<s:FormItem width="100%" label="director:">
+					<s:Label text="{imdb.director}" width="100%" />
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="actors:">
+					<s:Label text="{imdb.actors}" width="100%" />
+				</s:FormItem>
+				
+				<s:Line width="100%">
+					<s:stroke>
+						<s:SolidColorStroke color="#3a3a3a" />
+					</s:stroke>
+				</s:Line>
+				
+				<s:FormItem width="100%" label="runtime:">
+					<s:Label text="{imdb.runtime}"/>
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="rating:">
+					<s:Label text="{imdb.rating}"/>
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="genre:">
+					<s:Label text="{imdb.genre}" width="100%"/>
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="writer:">
+					<s:Label text="{imdb.writer}" width="100%"/>
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="year:">
+					<s:Label text="{imdb.year}"/>
+				</s:FormItem>
+				
+			</s:Form>
+		</s:Group>
+	</s:Scroller>
+	
+	<s:HGroup left="5" bottom="5" 
+			  width="100%" horizontalCenter="0" verticalAlign="middle">
+		<s:Button width="60" height="60" 
+				  click="mail_clickHandler(event)" 
+				  icon="{mailIcon}"/>
+		<s:TextInput id="mail" width="100%" prompt="tarik.djebien@gmail.com"
+					 focusOut="mail_focusOutHandler(event)"/>
+	</s:HGroup>
+</components:View>

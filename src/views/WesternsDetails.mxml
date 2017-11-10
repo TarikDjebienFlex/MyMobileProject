@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:components="spark.components.*" 
+				 xmlns:components1="components.*"
+				 title="{_movie.fr}"
+				 dataChange="dataChangeHandler(event)"
+				 gestureSwipe="swipeHandler(event)" >
+	
+	<fx:Declarations>
+		<s:SlideViewTransition id="_slideViewTransition"
+							   direction="{ViewTransitionDirection.RIGHT}"
+							   mode="{SlideViewTransitionMode.COVER}"/>
+		<s:ZoomViewTransition id="_zoomTransition" mode="{ZoomViewTransitionMode.IN}"/>
+		<s:CrossFadeViewTransition id="_fadeTransition"/>
+		
+		<s:MultiDPIBitmapSource id="imdbIcons" 
+								source160dpi="@Embed('/assets/imdb-icon160.png')"
+								source240dpi="@Embed('/assets/imdb-icon240.png')"
+								source320dpi="@Embed('/assets/imdb-icon320.png')"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+
+		<![CDATA[
+			import mx.events.FlexEvent;
+			import spark.transitions.SlideViewTransitionMode;
+			import spark.transitions.ViewTransitionDirection;
+			import spark.transitions.ZoomViewTransitionMode;
+			import vo.WesternVO;
+			import vo.WesternsCollection;
+			
+			[Bindable]
+			private var _movie:WesternVO;
+			
+			[Bindable]
+			private var _moviesCollection:WesternsCollection;
+			
+			protected function dataChangeHandler(event:FlexEvent):void
+			{
+				if(this.data){
+					_moviesCollection = this.data as WesternsCollection;
+					_movie = _moviesCollection.getCurrentMovie();
+				}
+			}
+			
+			protected function goPrev():void
+			{
+				doNavigate(-1);				
+			}
+			
+			protected function goNext():void
+			{
+				doNavigate(1);				
+			}
+			
+			private function doNavigate(navigation:int):void
+			{
+				var navigate:Boolean = false;
+				
+				if(navigation > 0){
+					navigate = (_moviesCollection.currentItem != _moviesCollection.arrayCollection.length);
+					this._slideViewTransition.direction = ViewTransitionDirection.LEFT;
+				}else{
+					navigate = (_moviesCollection.currentItem != 0);
+					this._slideViewTransition.direction = ViewTransitionDirection.RIGHT;
+				}
+				
+				if(navigate){
+					_moviesCollection.currentItem = _moviesCollection.currentItem + navigation;
+					this.navigator.replaceView(WesternsDetails, _moviesCollection, null, this._slideViewTransition);
+				}
+			}
+			
+			protected function swipeHandler(event:TransformGestureEvent):void
+			{
+				//Si la propriete offsetX = -1 => swipe vers la gauche
+				//Si la propriete offsetX = 1 => swipe vers la droite
+				if(event.offsetX == -1) {
+					goNext();
+				} else 
+					if(event.offsetX == 1) {
+					goPrev();
+				}
+				
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<components:viewMenuItems>
+		<components1:HomeMenuItem appNavigator="{this.navigator}"/>
+	</components:viewMenuItems>
+	
+	<components:navigationContent>
+		<s:Button icon="@Embed('assets/home.png')"
+				  height="90%"
+				  click="navigator.popToFirstView()" />
+		
+		<s:Button id="prev_btn" label="&lt;" 
+				  click="goPrev()" 
+				  width="90%" height="90%" 
+				  enabled="{_moviesCollection.currentItem != 0}"
+				  styleName="actionBarBtn"/>
+	</components:navigationContent>
+	<components:actionContent>
+		<s:Button id="next_btn" label="&gt;"
+				  click="goNext()"
+				  width="90%" height="90%"
+				  styleName="actionBarBtn"
+				  enabled="{_moviesCollection.currentItem != _moviesCollection.arrayCollection.length-1}" />
+	</components:actionContent>
+	
+	<s:VGroup left="0" right="0" top="0" bottom="0" 
+			  paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5"
+			  horizontalAlign="center">
+		<s:Scroller width="100%"
+					height="100%">
+			<s:VGroup horizontalAlign="center">
+				<s:TextArea 
+					width="100%"		
+					height="100%"
+					editable="false" 
+					text="{_movie.description}"/>
+			</s:VGroup>
+		</s:Scroller>
+		
+		<s:Label width="100%" textAlign="center"
+				 text="{_movie.director} - {_movie.year}"/>
+		
+		<s:HGroup width="100%" 
+				  horizontalAlign="center" verticalAlign="bottom" >
+			<s:Image id="movieIcon"
+					 source="{_movie.imageURL}"
+					 click="navigator.pushView(WesternsPoster,_movie,null,_zoomTransition)"/>
+			<s:Spacer width="100%"/>
+			<s:Button id="imdb"
+					  icon="{this.imdbIcons}"
+					  click="navigator.pushView(WesternsIMDbDetails,_movie,null,_fadeTransition)"/>
+		</s:HGroup>
+		
+	</s:VGroup>
+	
+</components:View>

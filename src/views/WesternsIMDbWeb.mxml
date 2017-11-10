@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:components="spark.components.*"
+				 xmlns:components1="components.*"
+				 
+				 title="IMDb"
+				 
+				 viewActivate="this.viewActivateHandler(event)"
+				 creationComplete="creationCompleteHandler(event)"
+				 dataChange="this.dataChangeHandler(event)"
+				 addedToStage="addedToStageHandler(event)" >
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			
+			import spark.events.ViewNavigatorEvent;
+			
+			import utils.Mobile;
+			
+			import vo.IMDbvo;
+			
+			private var _webView:StageWebView = new StageWebView();
+			
+			[Bindable]
+			public var url:String = "";
+			
+			protected function viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				/* quand PersistenceManager restaure la vue, 
+				le cycle d'événement n'est pas le même que lors de la création
+				il faut gérer StageWebView dans le handler de l'event "addedToStage"
+				*/
+			}
+			
+			private function removeHandler(event:ViewNavigatorEvent):void
+			{
+				// bug 2011-10-13
+				_webView.removeEventListener(ErrorEvent.ERROR, webViewErrorHandler);
+				_webView.dispose();
+				stage.removeEventListener(StageOrientationEvent.ORIENTATION_CHANGE, orientationChangeHandler);
+			}
+			
+			private function dataChangeHandler(event:FlexEvent):void
+			{
+				var item:IMDbvo = data as IMDbvo;
+				if (item) {
+					this.url = "http://www.imdb.com/title/"+item.id;
+				}
+			}
+			
+			private function stageWebViewDisplay(url:String):void
+			{
+				if(StageWebView.isSupported){
+					this._webView.addEventListener(ErrorEvent.ERROR, webViewErrorHandler);
+					this._webView.addEventListener(Event.COMPLETE, webViewCompleteHandler);
+					_webView.stage = stage;
+					this._webView.loadURL(this.url);
+					
+					this.addEventListener(ViewNavigatorEvent.REMOVING, this.removeHandler);
+				}
+			}
+			
+			private function webViewCompleteHandler(event:Event):void
+			{
+				this.bi.visible = false;
+				this._webView.removeEventListener(Event.COMPLETE, webViewCompleteHandler);
+			}
+			
+			private function webViewErrorHandler(error:ErrorEvent):void
+			{
+				trace(error);
+			}
+			
+			private function webSetViewPort(currWidth:Number, currHeight:Number):void
+			{
+				if(this._webView){
+					var offset:int = 5;
+					var topY:Number = navigator.actionBar.height + offset;
+					var webWidth:Number = currWidth - offset;
+					var webHeight:Number = currHeight - topY - (2 * offset);
+					this._webView.viewPort = new Rectangle(offset, topY, webWidth, webHeight);
+				}
+			}
+			
+			private function addedToStageHandler(event:Event):void{
+				if(_webView){
+					stageWebViewDisplay(this.url);
+					webSetViewPort (Mobile.getWidth(), Mobile.getHeight());
+				}
+				stage.addEventListener(StageOrientationEvent.ORIENTATION_CHANGE, orientationChangeHandler);
+			}
+			
+			private function menuPressedHandler(e:FlexEvent):void
+			{
+				this.webSetViewPort(Mobile.getWidth(), Mobile.getHeight() - 35);	
+			}
+			
+			private function orientationChangeHandler(e:StageOrientationEvent):void
+			{
+				this.webSetViewPort(Mobile.getWidth(), Mobile.getHeight());
+			}
+			
+			private function creationCompleteHandler(event:FlexEvent):void{
+				Mobile.addIOSbtn(backBtn);
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:Bounce id="_bounceEasing"/>
+		<s:FlipViewTransition id="_flipTransition"
+							  duration="1000"
+							  mode="cube"
+							  direction="right"
+							  easer="{_bounceEasing}"/>
+		<s:Button label="Back" id="backBtn"
+				  height="90%"
+				  click="navigator.popView(_flipTransition)"/>
+	</fx:Declarations>
+	
+	<components:viewMenuItems>
+		<components1:HomeMenuItem appNavigator="{this.navigator}" id="homeMenu"/>
+	</components:viewMenuItems>
+	
+	<components:navigationContent/>
+	
+	<components:actionContent>
+		<s:BusyIndicator id="bi" 
+						 visible="true"
+						 top="2"
+						 horizontalCenter="0"
+						 symbolColor="white"/>
+	</components:actionContent>
+</components:View>

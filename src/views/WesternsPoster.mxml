@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				 xmlns:s="library://ns.adobe.com/flex/spark" 
+				 xmlns:components="spark.components.*" 
+				 xmlns:components1="components.*"
+				 
+				 overlayControls="true"
+				 title="{data.fr}"
+				 
+				 gesturePan="panImage(event)"
+				 viewActivate="viewActivateHandler(event)"
+				 dataChange="dataChangeHandler(event)"
+				 creationComplete="creationCompleteHandler(event)"
+				 >
+	
+	<fx:Declarations>
+		<s:ZoomViewTransition id="_zoomTransition"
+							  mode="{ZoomViewTransitionMode.OUT}"/>
+		<s:Button id="backBtn" label="Détail"
+				  height="90%"
+				  click="navigator.popView(_zoomTransition)"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			
+			import spark.events.ViewNavigatorEvent;
+			import spark.transitions.ZoomViewTransitionMode;
+			
+			import utils.Mobile;
+			
+			import vo.WesternVO;
+			
+			[Bindable]
+			private var _url:String;
+			
+			protected function panImage(event:TransformGestureEvent):void
+			{
+				event.stopImmediatePropagation();
+				poster.x += event.offsetX * 3;
+				poster.y += event.offsetY * 3;
+			}
+			
+			protected function viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				poster.addEventListener(TransformGestureEvent.GESTURE_ZOOM, zoomImage);
+				poster.addEventListener(TransformGestureEvent.GESTURE_ROTATE, rotateImage);
+			}
+			
+			private function creationCompleteHandler(event:FlexEvent):void
+			{
+				Mobile.addIOSbtn(backBtn);
+			}
+			
+			private function zoomImage(e:TransformGestureEvent):void
+			{
+				e.stopImmediatePropagation();
+				//On verifie un seuil de 0.5 en min et 3 en maxi
+				if (e.scaleX < 1 || e.scaleY < 1){
+					if (poster.scaleX > 0.5){
+						poster.scaleX *= e.scaleX;
+						poster.scaleY *= e.scaleY;
+					}else{
+						poster.scaleX=0.5;
+						poster.scaleY=0.5;
+					}
+				}else{
+					if (poster.scaleX < 3){
+						poster.scaleX *= e.scaleX;
+						poster.scaleY *= e.scaleY;
+					}else{
+						poster.scaleX=3;
+						poster.scaleY=3;
+					}
+				}
+			}
+			
+			private function rotateImage(e:TransformGestureEvent):void
+			{
+				e.stopImmediatePropagation();
+				poster.rotation += e.rotation;
+			}
+			
+			protected function dataChangeHandler(event:FlexEvent):void
+			{
+				var western:WesternVO = data as WesternVO;
+				if (western) {
+					this._url = western.posterURL; 
+				}
+			}
+			
+			/**
+			 *centrer l'image
+			 *
+			 */
+			private function centerPoster():void{
+				poster.x=Mobile.getWidth()/2-(poster.width/2);
+				poster.y=Mobile.getHeight()/2-(poster.height/2);
+			}
+		]]>
+	</fx:Script>
+	
+	<components:viewMenuItems>
+		<components1:HomeMenuItem appNavigator="{navigator}"/>
+	</components:viewMenuItems>
+	
+	<components:navigationContent>
+		<s:Button label="Back" click="navigator.popView(this._zoomTransition)" />
+	</components:navigationContent>
+			
+	<s:Image id="poster" 
+			 source="{_url}" resize="centerPoster()"/>
+</components:View>
